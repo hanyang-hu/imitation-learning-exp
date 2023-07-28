@@ -4,7 +4,7 @@ An experiment of behavioral cloning and imitation learning on the highway-env.
 
 ## To-do List
 
-- [x] Implement a customized PyTorch dataset to load and sample trajectories
+- [x] Implement a customized PyTorch dataset to load and sample trajectories (by `torch.utils.data.DataLoader`)
 - [x] Read the [deep sets](https://arxiv.org/pdf/1703.06114.pdf) paper and implement it
   - I plan to use deep sets instead of the previously implemented [social attention](https://github.com/KoHomerHu/social-attention-exp/tree/main) because deep sets architecture does not need to learn the query and keys. It may be troublesome if the query and keys are entirely different types of entities (e.g. query is multi-modal sensor data where keys are bounding boxes of detect objects).
   - I actually do not know which one is better, it will be good to test whether deep sets or social attention works best in our own use case. 
