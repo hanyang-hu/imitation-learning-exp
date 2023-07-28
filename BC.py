@@ -8,6 +8,7 @@ import gymnasium as gym
 from tqdm import tqdm
 from matplotlib import pyplot as plt
 from deep_sets import MLP, DeepSet
+from attention import Attention
 
 class DeepSetPolicyNet(torch.nn.Module):
     def __init__(self, state_dim, hidden_dim, action_dim, representation_dim = 256):
@@ -25,12 +26,35 @@ class DeepSetPolicyNet(torch.nn.Module):
         else:
             set_representation = self.deep_set(x[1:,:]) 
             return F.softmax(self.mlp(torch.cat((x[0,:], set_representation), 0)), dim = 0)
+        
+
+class SocialAttentionPolicyNet(torch.nn.Module):
+    def __init__(self, state_dim, hidden_dim, action_dim, ego_dim = 5, oppo_dim = 5):
+        super(SocialAttentionPolicyNet, self).__init__()
+        self.attn = Attention(ego_dim, oppo_dim)
+        layer1 = self.attn.embed_dim
+        layer_dim = [layer1,] + hidden_dim + [action_dim,]
+        self.fc = torch.nn.ParameterList([torch.nn.Linear(layer_dim[i], layer_dim[i+1]) for i in range(len(hidden_dim))])
+
+    def forward(self, x):
+        if len(x.shape) > 2:
+            x = self.attn(x[:,0,:], x[:,:,:])
+            d = 1
+        else:
+            x = self.attn(x[0], x[:]) # the first line is always the ego vehicle
+            d = 0
+
+        for layer in self.fc:
+            x = F.relu(layer(x))
+
+        return F.softmax(x, dim = d)
     
 
 class BehaviorClone(torch.nn.Module):
-    def __init__(self, state_dim, hidden_dim, action_dim, lr, device, focal_loss = False, gamma = 2, soft = False):
+    def __init__(self, state_dim, hidden_dim, action_dim, lr, device, focal_loss = True, gamma = 5, soft = False):
         super(BehaviorClone, self).__init__()
-        self.policy = DeepSetPolicyNet(state_dim, hidden_dim, action_dim).to(device)
+        # self.policy = DeepSetPolicyNet(state_dim, hidden_dim, action_dim).to(device)
+        self.policy = SocialAttentionPolicyNet(state_dim, hidden_dim, action_dim).to(device)
         self.optimizer = torch.optim.Adam(self.policy.parameters(), lr=lr)
         self.scheduler = lr_scheduler.LinearLR(self.optimizer, start_factor=1.0, end_factor=0.1, total_iters=100)
         self.device = device
@@ -49,6 +73,7 @@ class BehaviorClone(torch.nn.Module):
         self.optimizer.zero_grad()
         bc_loss.backward()
         self.optimizer.step()
+        return bc_loss
 
     def take_action(self, state):
         state = torch.tensor(np.array([state]), dtype=torch.float).to(self.device)
@@ -113,9 +138,11 @@ if __name__ == '__main__':
 
     with tqdm(total=n_iterations, desc="Progress Bar") as pbar:
         for i in range(n_iterations):
+            loss = []
             for batch in dataloader:
                 expert_s, expert_a = batch['state'], batch['action']
-                bc_agent.learn(expert_s, expert_a)
+                loss.append(bc_agent.learn(expert_s, expert_a))
+            print(sum(loss) / len(loss))
             """
             if i > n_iterations * 0.7:
                 current_return = test_agent(bc_agent, env, 3)
@@ -128,4 +155,4 @@ if __name__ == '__main__':
 
     print("Average return: {}".format(test_agent(bc_agent, env, 10)))
 
-    torch.save(bc_agent.state_dict(), "bc_deep_set.pt")
+    torch.save(bc_agent.state_dict(), "./model/bc_attn_fl5.pt")
