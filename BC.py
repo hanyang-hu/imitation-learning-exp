@@ -91,7 +91,6 @@ if __name__ == '__main__':
     }
     env.configure(config)
     env.config["duration"] = 60
-    env.seed(0)
     torch.manual_seed(0)
     np.random.seed(0)
 
@@ -115,9 +114,10 @@ if __name__ == '__main__':
                 bc_agent.learn(expert_s, expert_a)
             current_return = test_agent(bc_agent, env, 5)
             test_returns.append(current_return)
-            if (i + 1) % 10 == 0:
-                pbar.set_postfix({'return': '%.3f' % np.mean(test_returns[-10:])})
+            if (i + 1) % 5 == 0:
+                pbar.set_postfix({'return': '%.3f' % np.mean(test_returns[-5:])})
             pbar.update(1)
+            bc_agent.scheduler.step()
 
     iteration_list = list(range(len(test_returns)))
     plt.plot(iteration_list, test_returns)
