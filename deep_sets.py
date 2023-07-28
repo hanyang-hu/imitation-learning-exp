@@ -5,7 +5,7 @@ class MLP(torch.nn.Module):
     def __init__(self, input_dim, hidden_dim, output_dim):
         super(MLP, self).__init__()
         layer_dim = [input_dim,] + hidden_dim + [output_dim,]
-        self.fc = [torch.nn.Linear(layer_dim[i], layer_dim[i+1]) for i in range(len(layer_dim) - 1)]
+        self.fc = torch.nn.ParameterList([torch.nn.Linear(layer_dim[i], layer_dim[i+1]) for i in range(len(layer_dim) - 1)])
         for layer in self.fc:
             torch.nn.init.xavier_uniform_(layer.weight)
             layer.bias.data.fill_(0)
