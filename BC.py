@@ -27,8 +27,9 @@ class DeepSetPolicyNet(torch.nn.Module):
             return F.softmax(self.mlp(torch.cat((x[0,:], set_representation), 0)), dim = 0)
     
 
-class BehaviorClone:
+class BehaviorClone(torch.nn.Module):
     def __init__(self, state_dim, hidden_dim, action_dim, lr, device, focal_loss = False, gamma = 2, soft = False):
+        super(BehaviorClone, self).__init__()
         self.policy = DeepSetPolicyNet(state_dim, hidden_dim, action_dim).to(device)
         self.optimizer = torch.optim.Adam(self.policy.parameters(), lr=lr)
         self.scheduler = lr_scheduler.LinearLR(self.optimizer, start_factor=1.0, end_factor=0.1, total_iters=100)
@@ -94,7 +95,6 @@ if __name__ == '__main__':
         "manual_control": True
     }
     env.configure(config)
-    env.config["duration"] = 60
     torch.manual_seed(0)
     np.random.seed(0)
 
@@ -104,7 +104,7 @@ if __name__ == '__main__':
     lr = 1e-3
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
     bc_agent = BehaviorClone(state_dim, hidden_dim, action_dim, lr, device)
-    n_iterations = 10
+    n_iterations = 50
     batch_size = 64
     test_returns = []
 
@@ -116,18 +116,16 @@ if __name__ == '__main__':
             for batch in dataloader:
                 expert_s, expert_a = batch['state'], batch['action']
                 bc_agent.learn(expert_s, expert_a)
-            current_return = test_agent(bc_agent, env, 2)
-            test_returns.append(current_return)
-            if (i + 1) % 2 == 0:
-                pbar.set_postfix({'return': '%.3f' % np.mean(test_returns[-2:])})
+            """
+            if i > n_iterations * 0.7:
+                current_return = test_agent(bc_agent, env, 3)
+                test_returns.append(current_return)
+                if (i + 1) % 2 == 0:
+                    pbar.set_postfix({'return': '%.3f' % np.mean(test_returns[-2:])})
+            """
             pbar.update(1)
             bc_agent.scheduler.step()
 
-    torch.save(bc_agent.state_dict(), "bc_deep_set.pt")
+    print("Average return: {}".format(test_agent(bc_agent, env, 10)))
 
-    iteration_list = list(range(len(test_returns)))
-    plt.plot(iteration_list, test_returns)
-    plt.xlabel('Iterations')
-    plt.ylabel('Returns')
-    plt.title('BC on {highway-v0}')
-    plt.show()
+    torch.save(bc_agent.state_dict(), "bc_deep_set.pt")
