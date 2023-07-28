@@ -6,6 +6,9 @@ class MLP(torch.nn.Module):
         super(MLP, self).__init__()
         layer_dim = [input_dim,] + hidden_dim + [output_dim,]
         self.fc = [torch.nn.Linear(layer_dim[i], layer_dim[i+1]) for i in range(len(layer_dim) - 1)]
+        for layer in self.fc:
+            torch.nn.init.xavier_uniform_(layer.weight)
+            layer.bias.data.fill_(0)
 
     def forward(self, x):
         for layer in self.fc:
@@ -14,22 +17,11 @@ class MLP(torch.nn.Module):
     
 
 class DeepSet(torch.nn.Module):
-    def __init__(self, i_dim, r_dim, e_dim, phi_hidden = [64,], rho_hidden = [256, 256]):
+    def __init__(self, i_dim, r_dim, e_dim, phi_hidden = [256, 256], rho_hidden = [256,]):
         super(DeepSet, self).__init__()
         
         self.phi = MLP(i_dim, phi_hidden, r_dim)
         self.rho = MLP(r_dim, rho_hidden, e_dim)
-
-        self._reset_parameters()
-
-    def _reset_parameters(self):
-        # Initialization of parameters
-        for layer in self.phi.fc:
-            torch.nn.init.xavier_uniform_(layer.weight)
-            layer.bias.data.fill_(0)
-        for layer in self.rho.fc:
-            torch.nn.init.xavier_uniform_(layer.weight)
-            layer.bias.data.fill_(0)
         
     def forward(self, x):
         # Accept both batched and unbatched input
@@ -37,4 +29,6 @@ class DeepSet(torch.nn.Module):
         if not is_batched:
             x = x.unsqueeze(0)
 
-        return self.rho(torch.sum(self.phi(x), axis = 1)) if is_batched else o.squeeze(0)
+        o = self.rho(torch.sum(self.phi(x), axis = 1))
+
+        return o if is_batched else o.squeeze(0)
