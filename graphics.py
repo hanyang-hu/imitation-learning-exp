@@ -11,6 +11,20 @@ if TYPE_CHECKING:
     from highway_env.envs import AbstractEnv
     from highway_env.envs.common.abstract import Action
 
+current_action = 1
+updated = False
+
+def update_action(new_action):
+    global current_action, updated
+    current_action = new_action
+    updated = True
+
+def action_listener():
+    global current_action, updated
+    if not updated:
+        return 1 # if not updated during this iteration, then means no action, i.e. IDLE
+    updated = False
+    return current_action
 
 class EnvViewer(object):
 
@@ -180,15 +194,20 @@ class EventHandler(object):
 
     @classmethod
     def handle_discrete_action_event(cls, action_type: DiscreteMetaAction, event: pygame.event.EventType) -> None:
+        global current_action
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_RIGHT and action_type.longitudinal:
                 action_type.act(action_type.actions_indexes["FASTER"])
+                update_action(3)
             if event.key == pygame.K_LEFT and action_type.longitudinal:
                 action_type.act(action_type.actions_indexes["SLOWER"])
+                update_action(4)
             if event.key == pygame.K_DOWN and action_type.lateral:
                 action_type.act(action_type.actions_indexes["LANE_RIGHT"])
+                update_action(2)
             if event.key == pygame.K_UP:
                 action_type.act(action_type.actions_indexes["LANE_LEFT"])
+                update_action(0)
 
     @classmethod
     def handle_continuous_action_event(cls, action_type: ContinuousAction, event: pygame.event.EventType) -> None:
