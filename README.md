@@ -15,3 +15,56 @@ An experiment of behavioral cloning and imitation learning on the highway-env.
 - [ ] Experiment on GAIL
 - [ ] Read the [Wasserstein GAN](https://arxiv.org/pdf/1701.07875.pdf) paper and see if any improvement can be done for GAIL
 - [ ] Incorporate GRU / LSTM into GAIL
+
+## How to use `manual_control.py`
+
+As you can see line 5 of `manual_control.py` imports the `action_listener` method which does not exist in the original code of highway_env:
+
+```from highway_env.envs.common.graphics import action_listener```
+
+I implemented this logic to record the manual control actions as this function is not supported officially.
+
+Specifically, I have added the following parts:
+
+```
+current_action = 1
+updated = False
+
+def update_action(new_action):
+    global current_action, updated
+    current_action = new_action
+    updated = True
+
+def action_listener():
+    global current_action, updated
+    if not updated:
+        return 1 # if not updated during this iteration, then means no action, i.e. IDLE
+    updated = False
+    return current_action
+```
+and modified the `handle_discrete_action_event` method in the `EventHandler` class to:
+
+```
+def handle_discrete_action_event(cls, action_type: DiscreteMetaAction, event: pygame.event.EventType) -> None:
+    global current_action
+    if event.type == pygame.KEYDOWN:
+        if event.key == pygame.K_RIGHT and action_type.longitudinal:
+            action_type.act(action_type.actions_indexes["FASTER"])
+            update_action(3)
+        if event.key == pygame.K_LEFT and action_type.longitudinal:
+            action_type.act(action_type.actions_indexes["SLOWER"])
+            update_action(4)
+        if event.key == pygame.K_DOWN and action_type.lateral:
+            action_type.act(action_type.actions_indexes["LANE_RIGHT"])
+            update_action(2)
+        if event.key == pygame.K_UP:
+            action_type.act(action_type.actions_indexes["LANE_LEFT"])
+            update_action(0)
+```
+In order to make use of such modification, run the following script to find out where the folder of `highway_env` is:
+
+```
+import highway_env
+print(highway_env.__file__)
+```
+Then direct to the `\highway_env\envs\common\` folder and replace the `graphics.py` with the one in my repo.
