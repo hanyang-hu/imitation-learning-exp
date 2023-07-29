@@ -51,12 +51,12 @@ class SocialAttentionPolicyNet(torch.nn.Module):
     
 
 class BehaviorClone(torch.nn.Module):
-    def __init__(self, state_dim, hidden_dim, action_dim, lr, device, focal_loss = True, gamma = 5, soft = False):
+    def __init__(self, state_dim, hidden_dim, action_dim, lr, device, focal_loss = True, gamma = 30, soft = False):
         super(BehaviorClone, self).__init__()
-        # self.policy = DeepSetPolicyNet(state_dim, hidden_dim, action_dim).to(device)
-        self.policy = SocialAttentionPolicyNet(state_dim, hidden_dim, action_dim).to(device)
+        self.policy = DeepSetPolicyNet(state_dim, hidden_dim, action_dim).to(device)
+        # self.policy = SocialAttentionPolicyNet(state_dim, hidden_dim, action_dim).to(device)
         self.optimizer = torch.optim.Adam(self.policy.parameters(), lr=lr)
-        self.scheduler = lr_scheduler.LinearLR(self.optimizer, start_factor=1.0, end_factor=0.1, total_iters=100)
+        self.scheduler = lr_scheduler.LinearLR(self.optimizer, start_factor=1.0, end_factor=0.5, total_iters=100)
         self.device = device
         self.focal_loss = focal_loss
         self.gamma = gamma
@@ -78,6 +78,7 @@ class BehaviorClone(torch.nn.Module):
     def take_action(self, state):
         state = torch.tensor(np.array([state]), dtype=torch.float).to(self.device)
         probs = self.policy(state)
+        print(probs)
         if self.soft:
             action_dist = torch.distributions.Categorical(probs)
             action = action_dist.sample()
@@ -94,6 +95,7 @@ def test_agent(agent, env, n_episode):
         done = truncated = False
         while not (done or truncated):
             action = agent.take_action(state)
+            print(action)
             next_state, reward, done, truncated, _ = env.step(action)
             state = next_state
             episode_return += reward
@@ -116,8 +118,7 @@ if __name__ == '__main__':
                 "vy": [-20, 20]
             },
             "absolute": False
-        },
-        "manual_control": True
+        }
     }
     env.configure(config)
     torch.manual_seed(0)
@@ -126,14 +127,16 @@ if __name__ == '__main__':
     state_dim = 5
     hidden_dim = [256, 256]
     action_dim = 5
-    lr = 1e-3
+    lr = 5e-4
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
     bc_agent = BehaviorClone(state_dim, hidden_dim, action_dim, lr, device)
+    state_dict = torch.load("./model/bc_deep_sets_fl30_r14.35.pt")
+    bc_agent.load_state_dict(state_dict)
     n_iterations = 50
     batch_size = 64
     test_returns = []
 
-    dataset = TransitionDataset('transition_data_mc.pkl')
+    dataset = TransitionDataset('transition_data_balanced.pkl')
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=8)
 
     with tqdm(total=n_iterations, desc="Progress Bar") as pbar:
@@ -143,16 +146,17 @@ if __name__ == '__main__':
                 expert_s, expert_a = batch['state'], batch['action']
                 loss.append(bc_agent.learn(expert_s, expert_a))
             print(sum(loss) / len(loss))
-            """
+            '''
             if i > n_iterations * 0.7:
                 current_return = test_agent(bc_agent, env, 3)
                 test_returns.append(current_return)
                 if (i + 1) % 2 == 0:
                     pbar.set_postfix({'return': '%.3f' % np.mean(test_returns[-2:])})
-            """
+            '''
             pbar.update(1)
             bc_agent.scheduler.step()
 
+            
     print("Average return: {}".format(test_agent(bc_agent, env, 10)))
 
-    torch.save(bc_agent.state_dict(), "./model/bc_attn_fl5.pt")
+    torch.save(bc_agent.state_dict(), "./model/bc_deep_sets_fl30.pt")
