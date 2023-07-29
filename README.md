@@ -8,7 +8,7 @@ An experiment of behavioral cloning and imitation learning on the highway-env.
 - [x] Read the [deep sets](https://arxiv.org/pdf/1703.06114.pdf) paper and implement it
   - I plan to use deep sets instead of the previously implemented [social attention](https://github.com/KoHomerHu/social-attention-exp/tree/main) because deep sets architecture does not need to learn the query and keys. It may be troublesome if the query and keys are entirely different types of entities (e.g. query is multi-modal sensor data where keys are bounding boxes of detected objects).
   - I actually do not know which one is better, it will be good to test whether deep sets or social attention works best in our own use case. So far I empirically see that deep sets reach less loss (hence higher likelihood) faster compared to social attention, which is what I expected (though I haven't tuned the hyperparameters so that the results could be different). Performance-wise, sadly, both architectures only learned to be IDLE for behavioral cloning.
-  - Funny thing for the last bullet point: I actually forget to turn off manual control :)
+  - Funny thing for the last bullet point: I actually forgot to turn off manual control :), no wonder why they are all IDLE.
 - [x] Collect data of manual control and dump it into a pickle file
   - The distribution of actions in `transition_data.pkl` is almost uniform, this should not happen. The API is not recording the manual control action read from the event handler. `transition_data.pkl` is most likely garbage, I'll just leave it there.
   - `transition_data_mc.pkl` would be the one used for training BC.
