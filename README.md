@@ -10,12 +10,13 @@ An experiment of behavioral cloning and imitation learning on the highway-env.
   - I actually do not know which one is better, it will be good to test whether deep sets or social attention works best in our own use case. So far I empirically see that deep sets reach less loss (hence higher likelihood) faster compared to social attention, which is what I expected (though I haven't tuned the hyperparameters so that the results could be different). Performance-wise, sadly, both architectures only learned to be IDLE for behavioral cloning.
   - Funny thing for the last bullet point: I actually forgot to turn off manual control :), no wonder why they are all IDLE. The result is that social attention seems to work better than deep sets (again, I didn't tune much hyperparameters so you know), specifically it learns to achieve faster speed so that when it turns it would not turn too hurry (I guess so? Please don't trust too much on this observation as I might take it back after more experiments). Imprssively 20 episodes with social attention + behavioral cloning achieve performance higher than double DQN in my previous experiment.
 - [x] Collect data of manual control and dump it into a pickle file
-  - The distribution of actions in `transition_data.pkl` is almost uniform, this should not happen. The API is not recording the manual control action read from the event handler. `transition_data.pkl` is most likely garbage, I'll just leave it there.
+  - The distribution of actions in `transition_data.pkl` is almost uniform, this should not happen. The API is not recording the manual control action read from the event handler. `transition_data.pkl` is most likely garbage, I deleted it.
   - `transition_data_mc.pkl` would be the one used for training BC.
   - Need to collect manual control data again and figure out how to store and load transition data by episodes, to allow training with GRU / LSTM.
 - [x] Experiment on behavioral cloning
   - As an expert data is expected to have a very unbalanced distribution (e.g. most of the time the ego vehicle may be `IDLE`), and BC on discrete action spaces has no difference to a supervised classification task, we may try using [focal loss](https://arxiv.org/abs/1708.02002v2) to alleviate this problem.
-- [ ] Experiment on IQL (with groud truth reward signal)
+- [ ] Experiment on IQL (with true reward signals)
+  - I am considering doing IQL because I may want to test IRL + IQL and I am not that familiar with IRL methods yet (the only one that I know is GAIL), plus the policy extraction step using AWR may be considered somewhere in between behavioral cloning and Q learning (controlled by the hyperparameter $\beta$).
 - [ ] Experiment on GAIL
 - [ ] Incorporate GRU / LSTM into GAIL
 
