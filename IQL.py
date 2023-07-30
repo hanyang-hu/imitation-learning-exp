@@ -112,6 +112,8 @@ class IQL(torch.nn.Module):
 
         self.count += 1
 
+        return q_loss.detach().item()
+
     def policy_extraction(self, transition_dict):
         states = transition_dict['state'].float().to(self.device)
         actions = transition_dict['action'].view(-1, 1).to(self.device)
@@ -129,6 +131,8 @@ class IQL(torch.nn.Module):
         policy_loss.backward()
         self.policy_optimizer.step()
 
+        return policy_loss.detach().item()
+
 
 if __name__ == '__main__':
     from tqdm import tqdm
@@ -142,7 +146,7 @@ if __name__ == '__main__':
     gamma = 0.99
     tau = 0.9
     beta = 1.0
-    target_update = 10
+    target_update = 50
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
     iql_agent = IQL(state_dim, hidden_dim, action_dim, lr, gamma, tau, beta, target_update, device)
@@ -154,8 +158,10 @@ if __name__ == '__main__':
 
     with tqdm(total=n_iterations, desc="IQL Learning Progress") as pbar:
         for i in range(n_iterations):
+            loss = []
             for transition_dict in dataloader:
-                iql_agent.update(transition_dict)
+                loss.append(iql_agent.update(transition_dict))
+            pbar.set_postfix({'TD Loss': '%.3f' % np.mean(loss)})
             pbar.update(1)
 
     torch.save(iql_agent.state_dict(), "./model/iql_attn_npe.pt")
@@ -163,9 +169,11 @@ if __name__ == '__main__':
     print("IQL learning completed.")
 
     with tqdm(total=10, desc="Policy Extraction Progress") as pbar:
-        for i in range(100):
+        for i in range(10):
+            loss = []
             for transition_dict in dataloader:
-                iql_agent.policy_extraction(transition_dict)
+                loss.append(iql_agent.policy_extraction(transition_dict))
+            pbar.set_postfix({'TD Loss': '%.3f' % np.mean(loss)})
             pbar.update(1)
 
     torch.save(iql_agent.state_dict(), "./model/iql_attn.pt")
