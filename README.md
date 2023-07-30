@@ -15,6 +15,7 @@ An experiment of behavioral cloning and imitation learning on the highway-env.
   - Need to collect manual control data again and figure out how to store and load transition data by episodes, to allow training with GRU / LSTM.
 - [x] Experiment on behavioral cloning
   - As an expert data is expected to have a very unbalanced distribution (e.g. most of the time the ego vehicle may be `IDLE`), and BC on discrete action spaces has no difference to a supervised classification task, we may try using [focal loss](https://arxiv.org/abs/1708.02002v2) to alleviate this problem.
+- [ ] Experiment on IQL (with groud truth reward signal)
 - [ ] Experiment on GAIL
 - [ ] Incorporate GRU / LSTM into GAIL
 
