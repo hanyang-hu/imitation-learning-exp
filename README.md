@@ -37,8 +37,6 @@ Returns are averaged in 50 episodes under the default setting of highway-env.
 |      Algorithm     |  Mean Return | + GRU |
 |:-------------:|:------:|:----:|
 |  BC | 25.69 | Pending |
-|BC + DQN | Pending | Pending |
-| BC + CQL | Pending | Pending |
 |    GAIL + DQN   |   Pending | Pending |
 | GAIL + CQL |    Pending | Pending |
 | GAIL + IQL| Pending | Pending |
