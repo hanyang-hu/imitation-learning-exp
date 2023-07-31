@@ -8,7 +8,6 @@ import gymnasium as gym
 from tqdm import tqdm
 from deep_sets import DeepSet
 from attention import MLP, Attention
-import threading
 
 class DeepSetPolicyNet(torch.nn.Module):
     def __init__(self, state_dim, hidden_dim, action_dim, representation_dim = 256):
@@ -127,11 +126,11 @@ if __name__ == '__main__':
     bc_agent = BehaviorClone(state_dim, hidden_dim, action_dim, lr, device)
     # state_dict = torch.load("./model/bc_attn_fl5_r17.03.pt")
     # bc_agent.load_state_dict(state_dict)
-    n_iterations = 1000
+    n_iterations = 500
     batch_size = 64
     test_returns = []
     
-    dataset = TransitionDataset('transition_data_mc.pkl')
+    dataset = TransitionDataset('transition_data_mc2.pkl')
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=16)
     iterator = list(iter(dataloader))
 
@@ -142,14 +141,15 @@ if __name__ == '__main__':
                 expert_s, expert_a = batch['state'], batch['action']
                 loss.append(bc_agent.learn(expert_s, expert_a))
             pbar.set_postfix({'scaled average loss': '%.3f' % (10 * np.mean(loss))})
+            if (10 * np.mean(loss)) < 0.05:
+                break # Early stopping
             if (i + 1) % 10 == 0:
                 bc_agent.scheduler.step()
-            if (i + 1) % 100 == 0:  
-                iterator = list(iter(dataloader))       
-                print("Average return in 10 episodes: {}".format(test_agent(bc_agent, env, 10)))
+            if (i + 1) % 100 == 0 and i + 1 < n_iterations:  
+                iterator = list(iter(dataloader))      
             pbar.update(1)
     
             
     print("Average return: {}".format(test_agent(bc_agent, env, 50)))
 
-    torch.save(bc_agent.state_dict(), "./model/bc_attn_fl5_new.pt")
+    torch.save(bc_agent.state_dict(), "./model/bc_attn_fl5_new2.pt")
