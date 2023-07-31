@@ -20,7 +20,7 @@ class MLP(torch.nn.Module):
     def forward(self, x):
         residual = x
         for layer in self.fc:
-            x = F.relu(layer(x))
+            x = F.tanh(layer(x))
         
         return x + residual if self.resnet else x
 
@@ -35,8 +35,8 @@ class Attention(torch.nn.Module):
         self.num_heads = num_heads
         self.head_dim = embed_dim // num_heads
 
-        self.q_proj = MLP(ego_dim, [256,], embed_dim)
-        self.kv_proj = MLP(oppo_dim, [256,], 2*embed_dim)
+        self.q_proj = MLP(ego_dim, [128,], embed_dim)
+        self.kv_proj = MLP(oppo_dim, [128,], 2*embed_dim)
         self.o_proj = MLP(embed_dim, [], embed_dim) # Only 1 linear layer
         
     def forward(self, ego, oppo):
