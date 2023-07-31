@@ -32,12 +32,14 @@ I want to figure out how to achieve this (BC is clearly an approach, so I am act
 
 ## Results
 
-|      Algorithm     |  Mean Return in 50 episodes |
-|:-------------:|:------:|
-|  BC | 25.69 |
-|    GAIL + DQN   |   Pending |
-| GAIL + CQL |    Pending |
-| GAIL + IQL| Pending |
+Returns are averaged in 50 episodes under the default setting of highway-env.
+
+|      Algorithm     |  Mean Return | + GRU |
+|:-------------:|:------:|:----:|
+|  BC | 25.69 | Pending |
+|    GAIL + DQN   |   Pending | Pending |
+| GAIL + CQL |    Pending | Pending |
+| GAIL + IQL| Pending | Pending |
 
 ## How to use `manual_control.py`
 
