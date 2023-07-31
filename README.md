@@ -15,6 +15,8 @@ An experiment of behavioral cloning and imitation learning on the highway-env.
   - Need to collect manual control data again and figure out how to store and load transition data by episodes, to allow training with GRU / LSTM.
 - [x] Experiment on behavioral cloning
   - As an expert data is expected to have a very unbalanced distribution (e.g. most of the time the ego vehicle may be `IDLE`), and BC on discrete action spaces has no difference to a supervised classification task, we may try using [focal loss](https://arxiv.org/abs/1708.02002v2) to alleviate this problem.
+  - After 500 epochs over `transition_data_mc.pkl` with batch size of 128, I tested the agent with 50 episodes, the average return was $19.13$ (I probably encountered over-fitting with the 1000 epochs setting). 
+  - One observed issue of the agent is that it often dies due to crashing when it turns right, I suppose it's because my demonstration data always like to turn right early. As I often speed up, turning right early has no problem for me, but the agent probably didn't learn that. This may be something to notice when collecting more demonstration data.
 - [ ] Experiment on IQL (with true reward signals)
   - I am considering doing IQL because I may want to test IRL + IQL and I am not that familiar with IRL methods yet (the only one that I know is GAIL), plus the policy extraction step using AWR may be considered somewhere in between behavioral cloning and Q learning (controlled by the hyperparameter $\beta$).
   - Currently the implementation of IQL does not seem to be correct, or maybe need to tune the hyperparameter $\tau$.
