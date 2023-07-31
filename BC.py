@@ -6,9 +6,9 @@ from rl_utils import TransitionDataset
 import numpy as np
 import gymnasium as gym
 from tqdm import tqdm
-from matplotlib import pyplot as plt
-from deep_sets import MLP, DeepSet
-from attention import Attention
+from deep_sets import DeepSet
+from attention import MLP, Attention
+import threading
 
 class DeepSetPolicyNet(torch.nn.Module):
     def __init__(self, state_dim, hidden_dim, action_dim, representation_dim = 256):
@@ -29,34 +29,29 @@ class DeepSetPolicyNet(torch.nn.Module):
         
 
 class SocialAttentionPolicyNet(torch.nn.Module):
-    def __init__(self, state_dim, hidden_dim, action_dim, ego_dim = 5, oppo_dim = 5):
+    def __init__(self, state_dim, hidden_dim, action_dim):
         super(SocialAttentionPolicyNet, self).__init__()
-        self.attn = Attention(ego_dim, oppo_dim)
-        layer1 = self.attn.embed_dim
-        layer_dim = [layer1,] + hidden_dim + [action_dim,]
-        self.fc = torch.nn.ParameterList([torch.nn.Linear(layer_dim[i], layer_dim[i+1]) for i in range(len(hidden_dim))])
+        self.attn = Attention(state_dim, state_dim).to(device)
+        self.MLP = MLP(self.attn.embed_dim, hidden_dim, action_dim).to(device)
 
     def forward(self, x):
         if len(x.shape) > 2:
             x = self.attn(x[:,0,:], x[:,:,:])
             d = 1
         else:
-            x = self.attn(x[0], x[:]) # the first line is always the ego vehicle
+            x = self.attn(x[0], x[:])
             d = 0
 
-        for layer in self.fc:
-            x = F.relu(layer(x))
-
-        return F.softmax(x, dim = d)
+        return F.softmax(self.MLP(x), dim=d)
     
 
 class BehaviorClone(torch.nn.Module):
-    def __init__(self, state_dim, hidden_dim, action_dim, lr, device, focal_loss = True, gamma = 30, soft = False):
+    def __init__(self, state_dim, hidden_dim, action_dim, lr, device, focal_loss = True, gamma = 5, soft = False):
         super(BehaviorClone, self).__init__()
-        self.policy = DeepSetPolicyNet(state_dim, hidden_dim, action_dim).to(device)
-        # self.policy = SocialAttentionPolicyNet(state_dim, hidden_dim, action_dim).to(device)
-        self.optimizer = torch.optim.Adam(self.policy.parameters(), lr=lr)
-        self.scheduler = lr_scheduler.LinearLR(self.optimizer, start_factor=1.0, end_factor=0.5, total_iters=100)
+        # self.policy = DeepSetPolicyNet(state_dim, hidden_dim, action_dim).to(device)
+        self.policy = SocialAttentionPolicyNet(state_dim, hidden_dim, action_dim).to(device)
+        self.optimizer = torch.optim.AdamW(self.policy.parameters(), lr=lr)
+        self.scheduler = lr_scheduler.LinearLR(self.optimizer, start_factor=1.0, end_factor=0.1, total_iters=100)
         self.device = device
         self.focal_loss = focal_loss
         self.gamma = gamma
@@ -73,7 +68,7 @@ class BehaviorClone(torch.nn.Module):
         self.optimizer.zero_grad()
         bc_loss.backward()
         self.optimizer.step()
-        return bc_loss
+        return bc_loss.detach().item()
 
     def take_action(self, state):
         state = torch.tensor(np.array([state]), dtype=torch.float).to(self.device)
@@ -125,38 +120,36 @@ if __name__ == '__main__':
     np.random.seed(0)
 
     state_dim = 5
-    hidden_dim = [256, 256]
+    hidden_dim = [256,]
     action_dim = 5
-    lr = 5e-4
+    lr = 1e-3
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
     bc_agent = BehaviorClone(state_dim, hidden_dim, action_dim, lr, device)
-    state_dict = torch.load("./model/bc_deep_sets_fl30_r14.35.pt")
-    bc_agent.load_state_dict(state_dict)
-    n_iterations = 50
+    # state_dict = torch.load("./model/bc_attn_fl5_r17.03.pt")
+    # bc_agent.load_state_dict(state_dict)
+    n_iterations = 1000
     batch_size = 64
     test_returns = []
-
-    dataset = TransitionDataset('transition_data_balanced.pkl')
-    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=8)
+    
+    dataset = TransitionDataset('transition_data_mc.pkl')
+    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=16)
+    iterator = list(iter(dataloader))
 
     with tqdm(total=n_iterations, desc="Progress Bar") as pbar:
         for i in range(n_iterations):
             loss = []
-            for batch in dataloader:
+            for batch in iterator:
                 expert_s, expert_a = batch['state'], batch['action']
                 loss.append(bc_agent.learn(expert_s, expert_a))
-            print(sum(loss) / len(loss))
-            '''
-            if i > n_iterations * 0.7:
-                current_return = test_agent(bc_agent, env, 3)
-                test_returns.append(current_return)
-                if (i + 1) % 2 == 0:
-                    pbar.set_postfix({'return': '%.3f' % np.mean(test_returns[-2:])})
-            '''
+            pbar.set_postfix({'scaled average loss': '%.3f' % (10 * np.mean(loss))})
+            if (i + 1) % 10 == 0:
+                bc_agent.scheduler.step()
+            if (i + 1) % 100 == 0:  
+                iterator = list(iter(dataloader))       
+                print("Average return in 10 episodes: {}".format(test_agent(bc_agent, env, 10)))
             pbar.update(1)
-            bc_agent.scheduler.step()
-
+    
             
-    print("Average return: {}".format(test_agent(bc_agent, env, 10)))
+    print("Average return: {}".format(test_agent(bc_agent, env, 50)))
 
-    torch.save(bc_agent.state_dict(), "./model/bc_deep_sets_fl30.pt")
+    torch.save(bc_agent.state_dict(), "./model/bc_attn_fl5_new.pt")
