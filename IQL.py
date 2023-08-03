@@ -139,8 +139,8 @@ class IQL(torch.nn.Module):
         v_pred = self.v_net(states).detach()
         advantage = q_pred - v_pred
         factor = torch.exp(self.beta * advantage)
-        probs = self.p_net(states)
-        log_probs = torch.log(probs + 1e-8)
+        log_probs = torch.log(self.policy(states).gather(1, actions)) 
+        log_probs = log_probs * torch.pow(1 - torch.exp(log_probs), 5) # focal loss, gamma = 0.5
         policy_loss = -torch.mean(factor * log_probs)
 
         self.p_optimizer.zero_grad()
