@@ -18,7 +18,7 @@ An experiment of behavioral cloning and imitation learning on the highway-env.
   - After 500 epochs over `transition_data_mc.pkl` with a batch size of 128, I tested the agent with 50 episodes, and the average return was $19.13$ (I probably encountered over-fitting with the 1000 epochs setting). 
   - One observed issue of the agent is that it often dies due to crashing when it turns right, I suppose it's because my demonstration data always like to turn right early. As I often speed up, turning right early has no problem for me, but the agent probably didn't learn that. This may be something to notice when collecting more demonstration data.
   - When I re-collected a more "safety-aware" demonstration (`transition_data_mc2.pkl`), the agent's performance goes up to 25.69 on average.
-- [ ] Experiment on IQL (with true reward signals)
+- [x] Experiment on IQL (with true reward signals)
   - I am considering doing IQL because I may want to test IRL + IQL and I am not that familiar with IRL methods yet (the only one that I know is GAIL), plus the policy extraction step using AWR may be considered somewhere in between behavioral cloning and Q learning (controlled by the hyperparameter $\beta$).
   - Currently, the implementation of IQL does not seem to be correct, the expectile loss of value function quickly descends to 0 whilst the TD loss never decreases. (Solved: the portion of transition in my dataset such that $r \not= 0$ or $r < 0.5$ is only around 0.6%, the rest is all around 1. I filtered out some of the 1's and add many 0's, the problem seems to be fixed. During fine-tuning state, I also tried to lower $\tau$, and the result seems to be better).
 - [ ] Experiment on offline imitation learning
@@ -38,7 +38,7 @@ Returns are averaged in 50 episodes under the default setting of highway-env.
 |:-------------:|:------:|:----:|
 |  BC | 25.69 | Pending |
 |    IRL   |   Pending | Pending |
-| IQL |    Pending | Pending |
+| IQL |  27.10   | Pending |
 | IRL + IQL| Pending | Pending |
 
 ## How to use `manual_control.py`
