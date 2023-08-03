@@ -190,7 +190,7 @@ if __name__ == '__main__':
     print("IQL learning completed.")
 
     batch_size = 128
-    dataset = TransitionDataset('transition_data_bc.pkl')
+    dataset = TransitionDataset('transition_data_bc.pkl') # this step is questionable, I will test which dataset is better for policy extraction
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=16)
     iterator = list(iter(dataloader))
 
