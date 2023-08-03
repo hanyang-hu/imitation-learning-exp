@@ -1,6 +1,6 @@
 import torch
 # import torch.nn.functional as F
-# import torch.optim.lr_scheduler as lr_scheduler
+import torch.optim.lr_scheduler as lr_scheduler
 from torch.distributions import Categorical
 import numpy as np
 from attention import MLP, Attention
@@ -27,20 +27,24 @@ class IQL(torch.nn.Module):
         self.attn_feature = AttentionFeatureExtractor(state_dim[0], state_dim[1]).to(device)
         self.attn_feature.attn.load_state_dict(torch.load('./model/attn_feature.pt'))
         self.attn_optimizer = optimizer(self.attn_feature.parameters(), lr=lr)
+        self.attn_scheduler = lr_scheduler.LinearLR(self.attn_optimizer, start_factor=1.0, end_factor=0.1, total_iters=100)
         # self.attn_feature.requires_grad_(False)
         embed_dim = self.attn_feature.embed_dim
 
         self.v_net = MLP(embed_dim, hidden_dim, 1).to(device)
         self.v_optimizer = optimizer(self.v_net.parameters(), lr=lr)
+        self.v_scheduler = lr_scheduler.LinearLR(self.v_optimizer, start_factor=1.0, end_factor=0.1, total_iters=100)
 
         self.q1_net = MLP(embed_dim, hidden_dim, action_dim).to(device)
         self.q1_optimizer = optimizer(self.q1_net.parameters(), lr=lr)
+        self.q1_scheduler = lr_scheduler.LinearLR(self.q1_optimizer, start_factor=1.0, end_factor=0.1, total_iters=100)
         self.target_q1_net = MLP(embed_dim, hidden_dim, action_dim).to(device)
         self.target_q1_net.load_state_dict(self.q1_net.state_dict())
         self.target_q1_net.requires_grad_(False)
 
         self.q2_net = MLP(embed_dim, hidden_dim, action_dim).to(device)
         self.q2_optimizer = optimizer(self.q2_net.parameters(), lr=lr)
+        self.q2_scheduler = lr_scheduler.LinearLR(self.q2_optimizer, start_factor=1.0, end_factor=0.1, total_iters=100)
         self.target_q2_net = MLP(embed_dim, hidden_dim, action_dim).to(device)
         self.target_q2_net.load_state_dict(self.q2_net.state_dict())
         self.target_q2_net.requires_grad_(False)
@@ -53,6 +57,12 @@ class IQL(torch.nn.Module):
         self.tau = tau
         self.beta = beta
         self.device = device
+
+    def scheduler_step(self):
+        self.attn_scheduler.step()
+        self.q1_scheduler.step()
+        self.q2_scheduler.step()
+        self.v_scheduler.step()
 
     def take_action(self, state, soft_decision = True):
         state = torch.tensor(np.array([state]), dtype = torch.float).to(self.device)
@@ -149,15 +159,15 @@ if __name__ == '__main__':
     hidden_dim = [256, ]
     action_dim = 5
     lr = 1e-3
-    alpha = 1e-1
+    alpha = 0.005
     gamma = 0.99
-    tau = 0.7
-    beta = 1.0
+    tau = 0.8
+    beta = 10.0
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
-    batch_size = 64
-    n_iterations = 500
-    dataset = TransitionDataset('filtered_transition_data_iql.pkl')
+    batch_size = 256
+    n_iterations = 1000
+    dataset = TransitionDataset('filtered_transition_data_iql2.pkl')
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=16)
     iterator = list(iter(dataloader))
 
@@ -172,11 +182,14 @@ if __name__ == '__main__':
                 v_loss.append(vl)
             pbar.set_postfix({'Min TD Loss': '%.3f' % np.mean(q_loss), 'Expectile Loss': '%.3f' % np.mean(v_loss)})
             pbar.update(1)
+            if (i + 1) % (n_iterations / 100):
+                iql_agent.scheduler_step()
 
     torch.save(iql_agent.state_dict(), "./model/iql_attn_npe.pt")
 
     print("IQL learning completed.")
 
+    batch_size = 128
     dataset = TransitionDataset('transition_data_bc.pkl')
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=16)
     iterator = list(iter(dataloader))
