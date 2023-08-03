@@ -66,7 +66,7 @@ class IQL(torch.nn.Module):
 
     def take_action(self, state, soft_decision = True):
         state = torch.tensor(np.array([state]), dtype = torch.float).to(self.device)
-        probs = self.policy(state)
+        probs = self.p_net(state)
         if soft_decision:
             action_dist = Categorical(probs)
             action = action_dist.sample()
@@ -140,7 +140,7 @@ class IQL(torch.nn.Module):
         advantage = q_pred - v_pred
         factor = torch.exp(self.beta * advantage)
         log_probs = torch.log(self.p_net(states).gather(1, actions)) 
-        log_probs = log_probs * torch.pow(1 - torch.exp(log_probs), 5) # focal loss, gamma = 0.5
+        # log_probs = log_probs * torch.pow(1 - torch.exp(log_probs), 5) # No focal loss, this is not plain classification
         policy_loss = -torch.mean(factor * log_probs)
 
         self.p_optimizer.zero_grad()
