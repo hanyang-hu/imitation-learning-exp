@@ -20,7 +20,7 @@ An experiment of behavioral cloning and imitation learning on the highway-env.
   - When I re-collected a more "safety-aware" demonstration (`transition_data_mc2.pkl`), the agent's performance goes up to 25.69 on average.
 - [ ] Experiment on IQL (with true reward signals)
   - I am considering doing IQL because I may want to test IRL + IQL and I am not that familiar with IRL methods yet (the only one that I know is GAIL), plus the policy extraction step using AWR may be considered somewhere in between behavioral cloning and Q learning (controlled by the hyperparameter $\beta$).
-  - Currently, the implementation of IQL does not seem to be correct, the expectile loss of value function quickly descends to 0 whilst the TD loss never decreases. (Solved: the portion of transition in my dataset such that $r \not= 0$ or $r < 0.5$ is only around 0.6%, the rest is all around 1. I filtered out some of the 1's and add many 0's, the problem seems to be fixed).
+  - Currently, the implementation of IQL does not seem to be correct, the expectile loss of value function quickly descends to 0 whilst the TD loss never decreases. (Solved: the portion of transition in my dataset such that $r \not= 0$ or $r < 0.5$ is only around 0.6%, the rest is all around 1. I filtered out some of the 1's and add many 0's, the problem seems to be fixed.).
 - [ ] Experiment on offline imitation learning
 - [ ] Incorporate GRU / LSTM
 
