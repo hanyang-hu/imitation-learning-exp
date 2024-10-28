@@ -21,8 +21,6 @@ An experiment of behavioral cloning and imitation learning on the highway-env.
 - [x] Experiment on IQL (with true reward signals)
   - I am considering doing IQL because I may want to test IRL + IQL and I am not that familiar with IRL methods yet (the only one that I know is GAIL), plus the policy extraction step using AWR may be considered somewhere in between behavioral cloning and Q learning (controlled by the hyperparameter $\beta$).
   - Currently, the implementation of IQL does not seem to be correct, the expectile loss of value function quickly descends to 0 whilst the TD loss never decreases. (Solved: the portion of transition in my dataset such that $r \not= 0$ or $r < 0.5$ is only around 0.6%, the rest is all around 1. I filtered out some of the 1's and add many 0's, the problem seems to be fixed.).
-- [ ] Experiment on offline imitation learning
-- [ ] Incorporate GRU / LSTM
 
 ## Thoughts about offline imitation learning
 
@@ -34,12 +32,10 @@ I want to figure out how to achieve this (BC is clearly an approach, so I am act
 
 Returns are averaged in 50 episodes under the default setting of highway-env.
 
-|      Algorithm     |  Mean Return | + GRU |
-|:-------------:|:------:|:----:|
-|  BC | 25.69 | Pending |
-|    IRL   |   Pending | Pending |
-| IQL |  27.10   | Pending |
-| IRL + IQL| Pending | Pending |
+|      Algorithm     |  Mean Return |
+|:-------------:|:------:|
+|  BC | 25.69 |
+| IQL |  27.10   | 
 
 Note. Unsure whether IQL is working properly due to the reward settings.
 
